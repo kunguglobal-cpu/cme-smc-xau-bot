@@ -1,0 +1,118 @@
+# cme_range_filter.py
+"""
+CME Expected Range Filter
+-------------------------
+Reads and evaluates the daily CME Expected Range.
+
+This module:
+- Stores Upper and Lower Expected Range
+- Calculates the Midpoint
+- Determines if price is:
+    • Above range
+    • Below range
+    • Inside range
+    • Near upper strike
+    • Near lower strike
+
+Author: CME SMC XAUUSD Bot
+"""
+
+from dataclasses import dataclass
+
+
+# ==========================================
+# SETTINGS
+# ==========================================
+
+# Distance (USD) considered "near" a strike price.
+# Example:
+# 0.50 = 50 cents
+# 1.00 = $1
+# 2.00 = $2
+STRIKE_TOLERANCE = 1.00
+
+
+# ==========================================
+# DATA MODEL
+# ==========================================
+
+@dataclass
+class CMEExpectedRange:
+    lower: float
+    upper: float
+
+    @property
+    def midpoint(self):
+        return (self.lower + self.upper) / 2
+
+
+# ==========================================
+# FILTER
+# ==========================================
+
+class CMERangeFilter:
+
+    def __init__(self, lower: float, upper: float):
+        self.range = CMEExpectedRange(lower, upper)
+
+    def upper(self):
+        return self.range.upper
+
+    def lower(self):
+        return self.range.lower
+
+    def midpoint(self):
+        return self.range.midpoint
+
+    def inside_range(self, price: float):
+        return self.range.lower <= price <= self.range.upper
+
+    def above_range(self, price: float):
+        return price > self.range.upper
+
+    def below_range(self, price: float):
+        return price < self.range.lower
+
+    def near_upper(self, price: float):
+        return abs(price - self.range.upper) <= STRIKE_TOLERANCE
+
+    def near_lower(self, price: float):
+        return abs(price - self.range.lower) <= STRIKE_TOLERANCE
+
+    def position(self, price: float):
+        if self.above_range(price):
+            return "ABOVE_RANGE"
+
+        if self.below_range(price):
+            return "BELOW_RANGE"
+
+        if self.near_upper(price):
+            return "NEAR_UPPER"
+
+        if self.near_lower(price):
+            return "NEAR_LOWER"
+
+        return "INSIDE_RANGE"
+
+
+# ==========================================
+# EXAMPLE
+# ==========================================
+
+if __name__ == "__main__":
+
+    # Replace these values each trading day
+    LOWER = 3315.00
+    UPPER = 3352.00
+
+    cme = CMERangeFilter(LOWER, UPPER)
+
+    current_price = 3349.70
+
+    print("Upper :", cme.upper())
+    print("Lower :", cme.lower())
+    print("Mid   :", cme.midpoint())
+
+    print("Status:", cme.position(current_price))
+    print("Near Upper:", cme.near_upper(current_price))
+    print("Near Lower:", cme.near_lower(current_price))
