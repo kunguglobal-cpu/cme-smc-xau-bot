@@ -1,0 +1,42 @@
+# bot/order_blocks.py
+
+class OrderBlockDetector:
+    def __init__(self):
+        pass
+
+    def detect_bullish_order_block(self, candles):
+        """
+        Returns the last bearish candle before a bullish impulse.
+        """
+        for i in range(len(candles) - 2):
+            if (
+                candles[i]["close"] < candles[i]["open"] and
+                candles[i + 1]["close"] > candles[i + 1]["open"]
+            ):
+                return candles[i]
+        return None
+
+    def detect_bearish_order_block(self, candles):
+        """
+        Returns the last bullish candle before a bearish impulse.
+        """
+        for i in range(len(candles) - 2):
+            if (
+                candles[i]["close"] > candles[i]["open"] and
+                candles[i + 1]["close"] < candles[i + 1]["open"]
+            ):
+                return candles[i]
+        return None
+
+
+if __name__ == "__main__":
+    sample_data = [
+        {"open": 100, "close": 95},
+        {"open": 95, "close": 110},
+        {"open": 110, "close": 115},
+    ]
+
+    detector = OrderBlockDetector()
+
+    print("Bullish OB:", detector.detect_bullish_order_block(sample_data))
+    print("Bearish OB:", detector.detect_bearish_order_block(sample_data))
