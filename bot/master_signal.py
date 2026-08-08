@@ -14,13 +14,6 @@ class MasterSignal:
 
     def calculate(self):
 
-        if not self.session_allowed:
-            return {
-                "valid": False,
-                "signal": "NO_TRADE",
-                "reason": "SESSION_FILTER"
-            }
-
         score = 0
         reasons = []
 
