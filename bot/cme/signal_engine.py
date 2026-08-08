@@ -19,30 +19,29 @@ class CMESignalEngine:
         lower_1 = levels.get("1sigma_lower")
         upper_2 = levels.get("2sigma_upper")
         lower_2 = levels.get("2sigma_lower")
+        upper_3 = levels.get("3sigma_upper")
+        lower_3 = levels.get("3sigma_lower")
 
-        score = 0
-        bias = "NEUTRAL"
+        # Check the most extreme CME zones first.
+        if upper_3 is not None and price >= upper_3:
+            return 4, "EXTREME_UPPER_3SIGMA"
 
-        if upper_1 and price >= upper_1:
-            score += 2
-            bias = "BEARISH_REJECTION_ZONE"
+        if lower_3 is not None and price <= lower_3:
+            return 4, "EXTREME_LOWER_3SIGMA"
 
-        elif lower_1 and price <= lower_1:
-            score += 2
-            bias = "BULLISH_REJECTION_ZONE"
+        if upper_2 is not None and price >= upper_2:
+            return 3, "EXTREME_UPPER_2SIGMA"
 
-        elif upper_2 and price >= upper_2:
-            score += 3
-            bias = "EXTREME_UPPER"
+        if lower_2 is not None and price <= lower_2:
+            return 3, "EXTREME_LOWER_2SIGMA"
 
-        elif lower_2 and price <= lower_2:
-            score += 3
-            bias = "EXTREME_LOWER"
+        if upper_1 is not None and price >= upper_1:
+            return 2, "BEARISH_REJECTION_ZONE"
 
-        else:
-            bias = "INSIDE_RANGE"
+        if lower_1 is not None and price <= lower_1:
+            return 2, "BULLISH_REJECTION_ZONE"
 
-        return score, bias
+        return 0, "INSIDE_RANGE"
 
     def _score_options(self):
         options = self.options_data
