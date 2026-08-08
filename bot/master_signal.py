@@ -4,13 +4,11 @@ class MasterSignal:
         self,
         cme=None,
         smc=None,
-        price=None,
-        session_allowed=True
+        price=None
     ):
         self.cme = cme or {}
         self.smc = smc or {}
         self.price = price
-        self.session_allowed = session_allowed
 
     def calculate(self):
 
@@ -150,8 +148,7 @@ if __name__ == "__main__":
     engine = MasterSignal(
         cme=cme,
         smc=smc,
-        price=3330,
-        session_allowed=True
+        price=3330
     )
 
     print(engine.calculate())
@@ -166,8 +163,7 @@ if __name__ == "__main__":
     engine = MasterSignal(
         cme=cme,
         smc=smc,
-        price=3350,
-        session_allowed=True
+        price=3350
     )
 
     print(engine.calculate())
@@ -178,8 +174,7 @@ if __name__ == "__main__":
     engine = MasterSignal(
         cme=cme,
         smc={"direction": "BULLISH"},
-        price=3330,
-        session_allowed=False
+        price=3330
     )
 
     print(engine.calculate())

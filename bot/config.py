@@ -22,8 +22,6 @@ MAX_OPEN_TRADES = 1
 # ============================
 # Session Filter (UTC)
 # ============================
-LONDON_NY_START = "13:00"
-LONDON_NY_END = "16:00"
 
 # ============================
 # Strategy Settings
