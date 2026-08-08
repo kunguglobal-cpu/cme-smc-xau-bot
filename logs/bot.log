@@ -1,0 +1,2 @@
+2026-08-08 02:23:52,160 | INFO | SIGNAL | direction=BUY | reason=['bullish_bos', 'bullish_fvg', 'bullish_order_block']
+2026-08-08 02:25:12,352 | INFO | SIGNAL | direction=BUY | reason=['bullish_bos', 'bullish_fvg', 'bullish_order_block']
