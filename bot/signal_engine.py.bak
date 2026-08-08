@@ -7,6 +7,7 @@ from cme_reader import CMEReader
 
 
 class SignalEngine:
+
     CME_TOLERANCE = 0.10
 
     def __init__(self):
@@ -17,32 +18,61 @@ class SignalEngine:
         self.cme = CMEReader()
 
     def _cme_context(self, price, cme_snapshot):
-        if isinstance(price, (list, tuple)):
-            if not price:
-                return {"zone": None, "distance": None, "level": None}
-            price = price[-1]
+             if isinstance(price, (list, tuple)):
+            price = price[-1]  
+       """ Determine whether price is near a CME expected-range level.
+
+        Returns:
+            {
+                "zone": "1sigma_lower" / "1sigma_upper" / None,
+                "distance": float,
+                "level": float
+            }
+        """
 
         if not cme_snapshot:
-            return {"zone": None, "distance": None, "level": None}
+            return {
+                "zone": None,
+                "distance": None,
+                "level": None
+            }
 
         levels = cme_snapshot.get("levels", {})
+
         lower = levels.get("1sigma_lower")
-        upper = levels.get("1sigma_upper")
+upper = levels.get("1sigma_upper")
+
+if isinstance(lower, (list, tuple)):
+    lower = lower[-1]
+
+if isinstance(upper, (list, tuple)):
+    upper = upper[-1]
+
+try:
+    lower = float(lower)
+    upper = float(upper)
+except (TypeError, ValueError):
+    return {
+        "zone": None,
+        "distance": None,
+        "level": None
+    }
 
         if lower is None or upper is None:
-            return {"zone": None, "distance": None, "level": None}
-
-        try:
-            price = float(price)
-            lower = float(lower)
-            upper = float(upper)
-        except (TypeError, ValueError):
-            return {"zone": None, "distance": None, "level": None}
+            return {
+                "zone": None,
+                "distance": None,
+                "level": None
+            }
 
         range_size = abs(upper - lower)
 
         if range_size <= 0:
-            return {"zone": None, "distance": None, "level": None}
+            return {
+                "zone": None,
+                "distance": None,
+                "level": None
+            }
 
         tolerance = range_size * self.CME_TOLERANCE
 
@@ -63,7 +93,11 @@ class SignalEngine:
                 "level": upper
             }
 
-        return {"zone": None, "distance": None, "level": None}
+        return {
+            "zone": None,
+            "distance": min(lower_distance, upper_distance),
+            "level": lower if lower_distance < upper_distance else upper
+        }
 
     def generate_signal(self, o, h, l, c, cme_snapshot=None):
 
@@ -74,15 +108,27 @@ class SignalEngine:
             "cme_level": None
         }
 
+        # ---------------------------------------------------------
+        # MARKET STRUCTURE
+        # ---------------------------------------------------------
+
         bos = self.market.detect_bos(h, l)
 
         if bos:
             signal["reason"].append(bos["type"])
 
+        # ---------------------------------------------------------
+        # FAIR VALUE GAP
+        # ---------------------------------------------------------
+
         fvg = self.fvg.detect_fvg(h, l)
 
         if fvg:
             signal["reason"].append(fvg["type"])
+
+        # ---------------------------------------------------------
+        # ORDER BLOCK
+        # ---------------------------------------------------------
 
         bull_ob = self.ob.detect_bullish_ob(o, h, l, c)
 
@@ -94,6 +140,10 @@ class SignalEngine:
         if bear_ob:
             signal["reason"].append("bearish_order_block")
 
+        # ---------------------------------------------------------
+        # LIQUIDITY SWEEPS
+        # ---------------------------------------------------------
+
         buy_sweep = self.liquidity.detect_buy_side_sweep(h, c)
 
         if buy_sweep:
@@ -104,16 +154,27 @@ class SignalEngine:
         if sell_sweep:
             signal["reason"].append("sell_side_sweep")
 
+        # ---------------------------------------------------------
+        # CME EXPECTED RANGE FILTER
+        # ---------------------------------------------------------
+
         cme = self._cme_context(c, cme_snapshot)
 
         signal["cme_zone"] = cme["zone"]
         signal["cme_level"] = cme["level"]
 
         if cme["zone"] == "1sigma_lower":
-            signal["reason"].append("cme_1sigma_lower")
+    signal["reason"].append("cme_1sigma_lower")
+elif cme["zone"] == "1sigma_upper":
+    signal["reason"].append("cme_1sigma_upper")
 
-        elif cme["zone"] == "1sigma_upper":
-            signal["reason"].append("cme_1sigma_upper")
+        # ---------------------------------------------------------
+        # BUY SETUP
+        #
+        # CME lower range
+        # + bullish BOS
+        # + bullish FVG OR bullish OB
+        # ---------------------------------------------------------
 
         bullish_confirmation = (
             "bullish_bos" in signal["reason"]
@@ -122,6 +183,20 @@ class SignalEngine:
                 or "bullish_fvg" in signal["reason"]
             )
         )
+
+        if (
+            cme["zone"] == "1sigma_lower"
+            and bullish_confirmation
+        ):
+            signal["direction"] = "BUY"
+
+        # ---------------------------------------------------------
+        # SELL SETUP
+        #
+        # CME upper range
+        # + bearish BOS
+        # + bearish FVG OR bearish OB
+        # ---------------------------------------------------------
 
         bearish_confirmation = (
             "bearish_bos" in signal["reason"]
@@ -132,16 +207,14 @@ class SignalEngine:
         )
 
         if (
-            cme["zone"] == "1sigma_lower"
-            and bullish_confirmation
-        ):
-            signal["direction"] = "BUY"
-
-        elif (
             cme["zone"] == "1sigma_upper"
             and bearish_confirmation
         ):
             signal["direction"] = "SELL"
+
+        # ---------------------------------------------------------
+        # LOG + RETURN
+        # ---------------------------------------------------------
 
         log_signal(signal)
 
@@ -149,6 +222,10 @@ class SignalEngine:
 
 
 if __name__ == "__main__":
+
+    # ---------------------------------------------------------
+    # TEST CME SNAPSHOT
+    # ---------------------------------------------------------
 
     cme_snapshot = {
         "symbol": "OG",
@@ -165,6 +242,10 @@ if __name__ == "__main__":
             "3sigma_lower": 3946.1
         }
     }
+
+    # ---------------------------------------------------------
+    # TEST PRICE DATA
+    # ---------------------------------------------------------
 
     opens = [4030, 4034, 4036]
     highs = [4038, 4042, 4045]
@@ -184,3 +265,4 @@ if __name__ == "__main__":
     print()
     print("=== CME + SMC SIGNAL TEST ===")
     print(result)
+
